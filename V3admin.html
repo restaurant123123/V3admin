@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鼎盛轩 - 智能云端后台 (Pro版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <style>
+        body { background-color: #F1F5F9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .tech-shadow { box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- 顶部科技感导航栏 -->
+    <header class="bg-slate-900 text-white p-4 md:px-8 md:py-5 shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+            <span class="text-3xl">📊</span>
+            <div>
+                <h1 class="text-xl md:text-2xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200">鼎盛轩 · 智能云端 CRM</h1>
+                <p class="text-xs text-slate-400 mt-0.5">全息顾客数据洞察引擎 V3.1</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
+            <span class="text-sm font-bold text-slate-300 pl-2">📅 时段分析：</span>
+            <select id="time-filter" onchange="processDashboardData()" class="bg-slate-900 text-amber-400 border border-slate-600 rounded-md px-3 py-1.5 text-sm font-bold focus:outline-none focus:border-amber-400 cursor-pointer transition">
+                <option value="this_month">本月实时 (自然月)</option>
+                <option value="last_month">上个月数据</option>
+                <option value="all_time">开店至今 (全量)</option>
+            </select>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-8 space-y-8">
+        
+        <!-- 第一段：动态对比大盘 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="dashboard-cards">
+            <div class="glass-card tech-shadow p-5 rounded-xl border-t-4 border-blue-500 relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 text-blue-100 opacity-20 text-6xl group-hover:scale-110 transition">👥</div>
+                <span class="text-slate-500 text-xs md:text-sm font-bold mb-1 block" id="label-active">本月活跃顾客</span>
+                <span class="text-3xl font-black text-slate-800" id="stat-active">0</span>
+            </div>
+            <div class="glass-card tech-shadow p-5 rounded-xl border-t-4 border-emerald-500 relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 text-emerald-100 opacity-20 text-6xl group-hover:scale-110 transition">🌱</div>
+                <span class="text-slate-500 text-xs md:text-sm font-bold mb-1 block" id="label-new">本月新增入库</span>
+                <span class="text-3xl font-black text-slate-800" id="stat-new">0</span>
+            </div>
+            <div class="glass-card tech-shadow p-5 rounded-xl border-t-4 border-amber-500 relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 text-amber-100 opacity-20 text-6xl group-hover:scale-110 transition">🔥</div>
+                <span class="text-slate-500 text-xs md:text-sm font-bold mb-1 block">高频老客群 (≥3次)</span>
+                <span class="text-3xl font-black text-slate-800" id="stat-loyal">0</span>
+            </div>
+            <div class="glass-card tech-shadow p-5 rounded-xl border-t-4 border-red-500 relative overflow-hidden group">
+                <div class="absolute -right-4 -top-4 text-red-100 opacity-20 text-6xl group-hover:scale-110 transition">💤</div>
+                <span class="text-slate-500 text-xs md:text-sm font-bold mb-1 block">需唤醒沉睡 (>30天)</span>
+                <span class="text-3xl font-black text-red-600" id="stat-sleeping">0</span>
+            </div>
+        </div>
+
+        <!-- 第二段：绝对 C 位 - 智能模糊搜索与查询引擎 -->
+        <div class="glass-card tech-shadow rounded-2xl border border-slate-200 p-6 md:p-10 bg-gradient-to-br from-white to-slate-50 relative">
+            <h2 class="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
+                <span class="text-blue-600">🔍</span> 精准查客与模糊检索引擎
+            </h2>
+            <div class="relative">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <input type="text" id="search-input" oninput="handleSearchInput()" placeholder="输入手机号任意数字（支持后几位模糊联想）..." class="flex-1 px-5 py-4 bg-white border-2 border-slate-200 rounded-xl text-lg font-bold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition shadow-sm placeholder-slate-400">
+                    <button onclick="executeDirectSearch()" class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-xl font-black text-lg shadow-lg hover:shadow-blue-500/30 transition flex items-center justify-center gap-2">
+                        查询档案
+                    </button>
+                </div>
+
+                <!-- 实时模糊联想下拉框 -->
+                <div id="search-suggestions" class="absolute left-0 right-0 top-full mt-2 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 hidden max-h-60 overflow-y-auto">
+                    <!-- 动态注入联想项 -->
+                </div>
+            </div>
+
+            <!-- 查询结果展示区 (专属档案卡) -->
+            <div id="search-result-area" class="mt-6 hidden">
+                <!-- JS 动态注入档案卡 -->
+            </div>
+        </div>
+
+        <!-- 第三段：老板营销与历史工具箱 (折叠式) -->
+        <div>
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 px-1 gap-2">
+                <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                    <span class="text-amber-500">🧰</span> 智能客群与全量历史总库
+                </h2>
+                <!-- 温馨提醒与统计口径小字说明 -->
+                <p class="text-xs text-slate-400 bg-slate-200/60 px-3 py-1 rounded-lg">
+                    💡 <span class="font-bold text-slate-600">温馨提醒：</span> VIP (累计消费≥RM500) | 回头客 (累计光顾≥3次) | 沉睡客 (>30天未到店)
+                </p>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <button onclick="toggleMarketingList('vip')" id="btn-cat-vip" class="bg-white border border-slate-200 hover:border-amber-400 p-4 rounded-xl shadow-sm hover:shadow transition text-left flex justify-between items-center group">
+                    <span class="font-bold text-slate-700 group-hover:text-amber-600">👑 高净值 VIP</span>
+                    <span id="badge-vip" class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold">0</span>
+                </button>
+                <button onclick="toggleMarketingList('loyal')" id="btn-cat-loyal" class="bg-white border border-slate-200 hover:border-amber-400 p-4 rounded-xl shadow-sm hover:shadow transition text-left flex justify-between items-center group">
+                    <span class="font-bold text-slate-700 group-hover:text-amber-600">🔥 回头客 (≥3次)</span>
+                    <span id="badge-loyal" class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold">0</span>
+                </button>
+                <button onclick="toggleMarketingList('new')" id="btn-cat-new" class="bg-white border border-slate-200 hover:border-amber-400 p-4 rounded-xl shadow-sm hover:shadow transition text-left flex justify-between items-center group">
+                    <span class="font-bold text-slate-700 group-hover:text-amber-600">🌱 近期新客</span>
+                    <span id="badge-new" class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold">0</span>
+                </button>
+                <button onclick="toggleMarketingList('sleeping')" id="btn-cat-sleeping" class="bg-white border border-slate-200 hover:border-amber-400 p-4 rounded-xl shadow-sm hover:shadow transition text-left flex justify-between items-center group">
+                    <span class="font-bold text-slate-700 group-hover:text-amber-600">💤 待唤醒</span>
+                    <span id="badge-sleeping" class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold">0</span>
+                </button>
+                <button onclick="toggleMarketingList('all')" id="btn-cat-all" class="col-span-2 md:col-span-1 bg-white border border-slate-200 hover:border-blue-400 p-4 rounded-xl shadow-sm hover:shadow transition text-left flex justify-between items-center group">
+                    <span class="font-bold text-blue-600">📂 历史总库</span>
+                    <span id="badge-all" class="bg-blue-50 text-blue-600 px-2 py-1 rounded text-xs font-bold">0</span>
+                </button>
+            </div>
+
+            <!-- 展开的列表区 -->
+            <div id="marketing-list-container" class="mt-4 hidden glass-card tech-shadow rounded-xl border border-slate-200 p-6">
+                <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-100">
+                    <h3 class="text-lg font-black text-slate-800" id="marketing-title">列表</h3>
+                    <button onclick="exportCurrentList()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold transition flex items-center gap-1">
+                        📥 导出此表
+                    </button>
+                </div>
+                <div id="marketing-list-content" class="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                    <!-- JS 渲染列表 -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 弹窗提示 -->
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl opacity-0 transition-opacity duration-300 pointer-events-none z-50">
+        复制成功！
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDShBrt-3CAAGQf4eP1T1zNf0q95MtGyPA",
+            authDomain: "restaurant-order-a8ed8.firebaseapp.com",
+            projectId: "restaurant-order-a8ed8",
+            storageBucket: "restaurant-order-a8ed8.firebasestorage.app",
+            messagingSenderId: "535128667185",
+            appId: "1:535128667185:web:6759dd6435d535d8349110"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let allMembers = [];       
+        let categorizedData = { vip: [], loyal: [], new: [], sleeping: [], all: [] };
+        let activeMarketingCategory = null;
+
+        document.addEventListener("DOMContentLoaded", fetchGlobalData);
+
+        async function fetchGlobalData() {
+            try {
+                const snapshot = await db.collection('restaurant_members').get();
+                allMembers = [];
+                snapshot.forEach(doc => allMembers.push(doc.data()));
+                
+                categorizeCustomers();
+                processDashboardData();
+            } catch (error) {
+                console.error("数据拉取失败:", error);
+            }
+        }
+
+        // 判断顾客身份并打标签（回头客设定：总订单数 >= 3）
+        function getCustomerLevel(m) {
+            let spent = Number(m.totalSpent || 0);
+            let orders = Number(m.totalOrders || 0);
+            let lastVisitTime = m.lastVisit ? new Date(m.lastVisit).getTime() : 0;
+            let now = new Date().getTime();
+            let days30 = 30 * 24 * 60 * 60 * 1000;
+
+            if (spent >= 500) return { text: "👑 高净值 VIP", class: "bg-amber-100 text-amber-800 border-amber-300" };
+            if (orders >= 3) return { text: "🔥 回头客 (≥3次)", class: "bg-orange-100 text-orange-800 border-orange-300" };
+            if (orders === 1 && (now - lastVisitTime < days30)) return { text: "🌱 近期新客", class: "bg-emerald-100 text-emerald-800 border-emerald-300" };
+            if (orders > 0 && lastVisitTime > 0 && (now - lastVisitTime > days30)) return { text: "💤 待唤醒", class: "bg-rose-100 text-rose-800 border-rose-300" };
+            return { text: "👤 普通顾客", class: "bg-slate-100 text-slate-700 border-slate-200" };
+        }
+
+        function categorizeCustomers() {
+            const now = new Date().getTime();
+            const days30 = 30 * 24 * 60 * 60 * 1000;
+
+            categorizedData = { vip: [], loyal: [], new: [], sleeping: [], all: [...allMembers] };
+
+            allMembers.forEach(m => {
+                let spent = Number(m.totalSpent || 0);
+                let orders = Number(m.totalOrders || 0);
+                let lastVisitTime = m.lastVisit ? new Date(m.lastVisit).getTime() : 0;
+
+                if (spent >= 500) categorizedData.vip.push(m);
+                if (orders >= 3) categorizedData.loyal.push(m); // 第3次及以上算回头客
+                if (orders === 1 && (now - lastVisitTime < days30)) categorizedData.new.push(m);
+                if (orders > 0 && lastVisitTime > 0 && (now - lastVisitTime > days30)) categorizedData.sleeping.push(m);
+            });
+
+            categorizedData.vip.sort((a, b) => b.totalSpent - a.totalSpent);
+            categorizedData.loyal.sort((a, b) => b.totalOrders - a.totalOrders);
+            categorizedData.sleeping.sort((a, b) => new Date(a.lastVisit) - new Date(b.lastVisit));
+            categorizedData.all.sort((a, b) => new Date(b.lastVisit || 0) - new Date(a.lastVisit || 0));
+
+            document.getElementById('badge-vip').innerText = categorizedData.vip.length;
+            document.getElementById('badge-loyal').innerText = categorizedData.loyal.length;
+            document.getElementById('badge-new').innerText = categorizedData.new.length;
+            document.getElementById('badge-sleeping').innerText = categorizedData.sleeping.length;
+            document.getElementById('badge-all').innerText = categorizedData.all.length;
+        }
+
+        function processDashboardData() {
+            const timeMode = document.getElementById('time-filter').value;
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            
+            let lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+            let lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+            let activeCount = 0, newCount = 0;
+            let labelActive = "本月活跃顾客", labelNew = "本月新增入库";
+
+            if (timeMode === 'this_month') {
+                allMembers.forEach(m => {
+                    let d = new Date(m.lastVisit);
+                    if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) activeCount++;
+                    if (m.totalOrders === 1 && d.getMonth() === currentMonth && d.getFullYear() === currentYear) newCount++;
+                });
+            } else if (timeMode === 'last_month') {
+                labelActive = "上月活跃顾客"; labelNew = "上月新增入库";
+                allMembers.forEach(m => {
+                    let d = new Date(m.lastVisit);
+                    if (d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear) activeCount++;
+                    if (m.totalOrders === 1 && d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear) newCount++;
+                });
+            } else {
+                labelActive = "历史总计顾客"; labelNew = "---";
+                activeCount = allMembers.length; newCount = "总库";
+            }
+
+            document.getElementById('label-active').innerText = labelActive;
+            document.getElementById('label-new').innerText = labelNew;
+            document.getElementById('stat-active').innerText = activeCount;
+            document.getElementById('stat-new').innerText = newCount;
+            document.getElementById('stat-loyal').innerText = categorizedData.loyal.length;
+            document.getElementById('stat-sleeping').innerText = categorizedData.sleeping.length;
+        }
+
+        // ================= 实时模糊搜索联想功能 =================
+        function handleSearchInput() {
+            const query = document.getElementById('search-input').value.trim();
+            const suggBox = document.getElementById('search-suggestions');
+            
+            if (!query) {
+                suggBox.classList.add('hidden');
+                suggBox.innerHTML = '';
+                return;
+            }
+
+            const matches = allMembers.filter(m => m.phone.includes(query)).slice(0, 6);
+            
+            if (matches.length === 0) {
+                suggBox.classList.add('hidden');
+                suggBox.innerHTML = '';
+                return;
+            }
+
+            suggBox.innerHTML = '';
+            matches.forEach(m => {
+                let lvl = getCustomerLevel(m);
+                let item = document.createElement('div');
+                item.className = "p-3 hover:bg-slate-100 cursor-pointer flex justify-between items-center border-b border-slate-100 transition";
+                item.innerHTML = `
+                    <div class="font-black text-slate-800">${highlightMatch(m.phone, query)}</div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs px-2 py-0.5 rounded-full border font-bold ${lvl.class}">${lvl.text}</span>
+                        <span class="text-xs text-slate-400">消费: RM${Number(m.totalSpent||0).toFixed(2)}</span>
+                    </div>
+                `;
+                item.onclick = () => {
+                    document.getElementById('search-input').value = m.phone;
+                    suggBox.classList.add('hidden');
+                    renderProfileCard(m);
+                };
+                suggBox.appendChild(item);
+            });
+            suggBox.classList.remove('hidden');
+        }
+
+        function highlightMatch(text, query) {
+            let index = text.indexOf(query);
+            if (index === -1) return text;
+            let before = text.substring(0, index);
+            let match = text.substring(index, index + query.length);
+            let after = text.substring(index + query.length);
+            return `${before}<span class="text-blue-600 bg-blue-50 px-0.5 rounded">${match}</span>${after}`;
+        }
+
+        function executeDirectSearch() {
+            const query = document.getElementById('search-input').value.trim();
+            document.getElementById('search-suggestions').classList.add('hidden');
+            
+            if (!query) {
+                alert("请输入手机号进行查询");
+                return;
+            }
+
+            const matches = allMembers.filter(m => m.phone.includes(query));
+            if (matches.length === 0) {
+                const resultArea = document.getElementById('search-result-area');
+                resultArea.classList.remove('hidden');
+                resultArea.innerHTML = `<div class="p-8 text-center bg-slate-50 border border-slate-200 rounded-xl text-slate-500 font-bold">没有找到包含 [ ${query} ] 的顾客记录 😢</div>`;
+                return;
+            }
+
+            renderProfileCard(matches);
+        }
+
+        function renderProfileCard(target) {
+            const resultArea = document.getElementById('search-result-area');
+            resultArea.classList.remove('hidden');
+            resultArea.innerHTML = '';
+
+            let list = Array.isArray(target) ? target : [target];
+
+            list.forEach(m => {
+                let lvl = getCustomerLevel(m);
+                let topDish = (m.topDishes && m.topDishes.length > 0) ? m.topDishes.join('、') : '暂无数据';
+                let waLink = getWhatsAppLink(m.phone);
+
+                let cardHTML = `
+                    <div class="bg-white border-2 border-slate-100 p-6 rounded-2xl shadow-sm hover:border-blue-200 transition relative mb-4">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 pb-4 mb-4">
+                            <div class="flex items-center gap-3">
+                                <h3 class="text-3xl font-black text-slate-800 tracking-wider">${m.phone}</h3>
+                                <span class="text-xs px-3 py-1 rounded-full border font-bold ${lvl.class}">${lvl.text}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="copyPhone('${m.phone}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-bold transition">复制</button>
+                                <a href="${waLink}" target="_blank" class="bg-[#25D366] hover:bg-[#20b858] text-white px-5 py-2.5 rounded-xl font-bold shadow-md transition flex items-center gap-2">
+                                    WhatsApp 触达
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <p class="text-xs text-slate-500 mb-1">💰 累计消费</p>
+                                <p class="text-lg font-black text-amber-600">RM ${Number(m.totalSpent||0).toFixed(2)}</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <p class="text-xs text-slate-500 mb-1">🔄 光顾次数</p>
+                                <p class="text-lg font-black text-blue-600">${m.totalOrders||0} 次</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <p class="text-xs text-slate-500 mb-1">⏱️ 最近光临</p>
+                                <p class="text-sm font-bold text-slate-700 mt-1">${m.lastVisit ? new Date(m.lastVisit).toLocaleDateString() : '无记录'}</p>
+                            </div>
+                            <div class="bg-slate-50 p-3 rounded-lg">
+                                <p class="text-xs text-slate-500 mb-1">🍽️ 个人最爱菜品</p>
+                                <p class="text-sm font-bold text-slate-700 line-clamp-1 mt-1" title="${topDish}">${topDish}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                resultArea.innerHTML += cardHTML;
+            });
+        }
+
+        // ================= 营销池与历史总库折叠面板 =================
+        function toggleMarketingList(cat) {
+            const container = document.getElementById('marketing-list-container');
+            const titleElem = document.getElementById('marketing-title');
+            
+            if (activeMarketingCategory === cat) {
+                container.classList.add('hidden');
+                activeMarketingCategory = null;
+                return;
+            }
+
+            activeMarketingCategory = cat;
+            container.classList.remove('hidden');
+            
+            const titles = {
+                vip: "👑 高净值 VIP 列表 (累计消费 ≥ RM500)",
+                loyal: "🔥 回头客列表 (累计光顾 ≥ 3次)",
+                new: "🌱 近期新客列表",
+                sleeping: "💤 待唤醒沉睡客列表 (>30天未到店)",
+                all: "📂 全局历史客户总库 (开店至今全量档案)"
+            };
+            titleElem.innerText = titles[cat];
+
+            renderMarketingList(cat);
+        }
+
+        function renderMarketingList(cat) {
+            const content = document.getElementById('marketing-list-content');
+            const data = categorizedData[cat];
+            content.innerHTML = '';
+
+            if (data.length === 0) {
+                content.innerHTML = `<p class="text-center text-slate-400 py-8">该分类暂无数据</p>`;
+                return;
+            }
+
+            data.forEach(m => {
+                let lvl = getCustomerLevel(m);
+                let waLink = getWhatsAppLink(m.phone);
+                content.innerHTML += `
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center bg-slate-50 p-3.5 rounded-xl border border-slate-100 hover:border-blue-200 transition gap-2">
+                        <div class="flex items-center gap-3">
+                            <span class="font-black text-slate-800 tracking-wide">${m.phone}</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded-full border font-bold ${lvl.class}">${lvl.text}</span>
+                        </div>
+                        <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                            <span class="text-xs text-slate-500">消费: RM${Number(m.totalSpent||0).toFixed(2)} | 光顾: ${m.totalOrders}次</span>
+                            <a href="${waLink}" target="_blank" class="text-xs bg-white border border-[#25D366] text-[#25D366] hover:bg-[#25D366] hover:text-white px-3.5 py-1.5 rounded-lg font-bold transition">
+                                WhatsApp
+                            </a>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function getWhatsAppLink(phone) {
+            let num = phone.replace(/\D/g, ''); 
+            if (num.startsWith('0')) num = '6' + num;
+            else if (!num.startsWith('60')) num = '60' + num;
+            return `https://wa.me/${num}`;
+        }
+
+        function copyPhone(phone) {
+            navigator.clipboard.writeText(phone).then(() => {
+                const toast = document.getElementById('toast');
+                toast.classList.remove('opacity-0');
+                setTimeout(() => toast.classList.add('opacity-0'), 2000);
+            });
+        }
+
+        function exportCurrentList() {
+            if (!activeMarketingCategory) return;
+            const data = categorizedData[activeMarketingCategory];
+            if (data.length === 0) return;
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF手机号,顾客标签,总消费(RM),光顾次数,最后光临时间\n";
+            data.forEach(m => {
+                let lvl = getCustomerLevel(m).text.replace(/[^\u4e00-\u9fa5A-Za-z]/g, '');
+                let spent = Number(m.totalSpent || 0).toFixed(2);
+                let date = m.lastVisit ? new Date(m.lastVisit).toLocaleString() : '';
+                csvContent += `="${m.phone}",${lvl},${spent},${m.totalOrders},${date}\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            const dateStr = new Date().toLocaleDateString().replace(/\//g, '-');
+            const catNames = { vip: 'VIP', loyal: '回头客', new: '新客', sleeping: '待唤醒', all: '历史总库' };
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `鼎盛轩_${catNames[activeMarketingCategory]}_${dateStr}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
